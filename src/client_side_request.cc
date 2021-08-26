@@ -541,15 +541,10 @@ ClientRequestContext::hostHeaderIpVerify(const ipcache_addrs* ia, const Dns::Loo
     // note the DNS details for the transaction stats.
     http->request->recordLookup(dns);
 
-    // Is the NAT destination IP in DNS?
-    if (ia && ia->have(clientConn->local)) {
-        debugs(85, 3, "validate IP " << clientConn->local << " possible from Host:");
-        http->request->flags.hostVerified = true;
-        http->doCallouts();
-        return;
-    }
-    debugs(85, 3, HERE << "FAIL: validate IP " << clientConn->local << " possible from Host:");
-    hostHeaderVerifyFailed("local IP", "any domain IP");
+    //INFIOT: Don't do Host header verify checks
+    debugs(85, 3, "Not checking Host verify for: " << clientConn->local);
+    http->request->flags.hostVerified = true;
+    http->doCallouts();
 }
 
 void
