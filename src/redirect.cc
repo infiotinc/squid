@@ -328,6 +328,9 @@ redirectStart(ClientHttpRequest * http, HLPCB * handler, void *data)
         bypassReply.result = Helper::Okay;
         bypassReply.notes.add("message","URL rewrite/redirect queue too long. Bypassed.");
         handler(data, bypassReply);
+
+        debugs(61, DBG_CRITICAL, "### Infiot filter. URI: " << http->uri << " Bypassed");
+
         return;
     }
 

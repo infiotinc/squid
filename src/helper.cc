@@ -572,6 +572,7 @@ helper::packStatsInto(Packable *p, const char *label) const
     p->appendf("  requests timedout: %d\n", stats.timedout);
     p->appendf("  queue length: %d\n", stats.queue_size);
     p->appendf("  avg service time: %d msec\n", stats.avg_svc_time);
+    p->appendf("  Max request queue length: %d msec\n", stats.max_queue_size);
     p->append("\n",1);
     p->appendf("%7s\t%7s\t%7s\t%11s\t%11s\t%11s\t%6s\t%7s\t%7s\t%7s\n",
                "ID #",
