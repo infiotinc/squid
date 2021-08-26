@@ -32,6 +32,7 @@
 #include "auth/UserRequest.h"
 #endif
 #if USE_OPENSSL
+#include "ssl/ServerBump.h"
 #include "ssl/support.h"
 #endif
 
@@ -283,13 +284,40 @@ constructHelperQuery(const char *name, helper *hlp, HLPCB *replyHandler, ClientH
 }
 
 /**** PUBLIC FUNCTIONS ****/
-
+/* INFIOT: This definition should be the same as the one in Squid.conf, DONOT change
+   this WITHOUT co-relating with Squid.conf file */
+#define INF_SQUID_HTTPS_TRANSPARENT_PROXY "3129"
 void
 redirectStart(ClientHttpRequest * http, HLPCB * handler, void *data)
 {
     assert(http);
     assert(handler);
     debugs(61, 5, "redirectStart: '" << http->uri << "'");
+
+    /* INFIOT: Skip Checking URL filter for HTTPS connections with TCP details
+       Check whether the connection is a HTTPS connection indicated by port 3129 (defined in Squid.conf)
+       and confirm that this step is TCP filtering step (indicated by severBump being null). 
+       The later filtering steps will be the checks on SNI and that should allowed */
+    if ((http->getConn() != NULL) &&
+       (http->getConn()->serverBump() == NULL) && 
+       (http->getConn()->port != NULL) &&
+       (http->getConn()->port->name != NULL) && 
+       ((strcmp(http->getConn()->port->name, INF_SQUID_HTTPS_TRANSPARENT_PROXY) == 0)))
+     {
+        debugs(61, 5, HERE << "### NOT calling redirector ()" << "### URL NOT bumped: "
+                           << http->uri  << "Port: " << http->getConn()->port->name);
+        Helper::Reply bypassReply;
+        bypassReply.result = Helper::Okay;
+        bypassReply.notes.add("message","Skipping HTTPS TCP connection details based URL filtering.");
+        handler(data, bypassReply);
+        return;               
+    }
+
+
+    // INFIOT: Track the max queue size, will help in tuning
+    if (redirectors->stats.queue_size > redirectors->stats.max_queue_size) {
+        redirectors->stats.max_queue_size = redirectors->stats.queue_size;
+    }
 
     // TODO: Deprecate Config.onoff.redirector_bypass in favor of either
     // onPersistentOverload or a new onOverload option that applies to all helpers.
@@ -300,6 +328,9 @@ redirectStart(ClientHttpRequest * http, HLPCB * handler, void *data)
         bypassReply.result = Helper::Okay;
         bypassReply.notes.add("message","URL rewrite/redirect queue too long. Bypassed.");
         handler(data, bypassReply);
+
+        debugs(61, DBG_CRITICAL, "### Infiot filter. URI: " << http->uri << " Bypassed");
+
         return;
     }
 
